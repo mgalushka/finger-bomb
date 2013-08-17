@@ -1,0 +1,6 @@
+yellow marker:
+HSV color range:
+
+H: 83-106
+S: 148-216
+V: 100-246
