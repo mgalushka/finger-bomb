@@ -31,6 +31,9 @@ Slider h1, v1, s1, h2, s2, v2;
 Mat resulted_x;
 Mat resulted_y;
 
+PImage aimer;
+PVector lastAim = new PVector(0, 0);
+
 void setup()
 {
   System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
@@ -55,6 +58,8 @@ void setup()
   h2 = new Slider("H2", 106, 0, 255, slidersStart, 110, 150, 20, HORIZONTAL);
   s2 = new Slider("S2", 216, 0, 255, slidersStart, 130, 150, 20, HORIZONTAL);
   v2 = new Slider("V2", 246, 0, 255, slidersStart, 150, 150, 20, HORIZONTAL);
+
+  aimer = loadImage("img/aim.png");
 
   stroke(255);
   noFill();
@@ -88,30 +93,33 @@ void draw()
     Core.inRange(flipped, new Scalar(h1.get(), s1.get(), v1.get()), new Scalar(h2.get(), s2.get(), v2.get()), interimFiltered);
     
     Mat interimRGB = new Mat(pimg.width, pimg.height, CvType.CV_8UC1);   
-    Imgproc.cvtColor(interimFiltered, interimRGB, Imgproc.COLOR_GRAY2BGR, 0);
-   
-    List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
-    Imgproc.findContours(interimFiltered, contours, new Mat(), Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+    Imgproc.cvtColor(interimFiltered, interimRGB, Imgproc.COLOR_GRAY2BGR, 0); 
+    
    
     pimg = lib.toP5(interimFiltered);    
-  }
   
-  if(pimg != null){    
-    // TODO: revert this back
-    image(pimg, 0, 0, width/3, height);
-    
-    Mat camMat = lib.toCV(camImg);
-    //println("from camera = " + camMat.channels() + ", type=" + camMat.type() + ", w="+camMat.cols() + ", h=" + camMat.rows());
-    Mat camFlipped = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
-    Imgproc.remap(camMat, camFlipped, resulted_x, resulted_y, 0, 0, new Scalar(0, 0, 0));
-    //println("after remap = " + camFlipped.channels() + ", type=" + camFlipped.type() + ", w="+camFlipped.cols() + ", h=" + camFlipped.rows());
-    
-    Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
-    Imgproc.cvtColor(camFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
-    //println("after color = " + camFinal.channels() + ", type=" + camFinal.type() + ", w="+camFinal.cols() + ", h=" + camFinal.rows());
-    image(lib.toP5(camFinal), width/3, 0, width/3, height);
-  }
+  
+    if(pimg != null){    
+      //image(pimg, 0, 0, width/3, height);
+      
+      PVector aim = getAimPosition(interimFiltered);
+      if (aim != null){
+        lastAim = aim;
+      }
+      fill(255, 255, 255);
+      rect(0, 0, width/3, height);
+      image(aimer, lastAim.x, lastAim.y);
+      
+      Mat camMat = lib.toCV(camImg);
+      Mat realCamFlipped = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
+      Imgproc.remap(camMat, realCamFlipped, resulted_x, resulted_y, 0, 0, new Scalar(0, 0, 0));
+      
+      Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
+      Imgproc.cvtColor(camFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
+      image(lib.toP5(camFinal), width/3, 0, width/3, height);
+    }
  
+  }
 
   fill(128, 128, 0);
   rect(2*width/3, 0, width/2, height);
@@ -147,8 +155,6 @@ void draw()
   text(h2.get(), textStart, heightShift+110);
   text(s2.get(), textStart, heightShift+130);
   text(v2.get(), textStart, heightShift+150);
-  
-
 }
 
 void mousePressed() {
@@ -172,6 +178,36 @@ void flipMap(int w, int h)
            resulted_y.put(j, i, j);  
        }
     }
+}
+
+
+/**
+ * returns the position of aim to shoot
+ */
+PVector getAimPosition(Mat finger){
+  List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
+  Imgproc.findContours(finger, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+  
+  float largest = 0;
+  Rect largestRect = null;
+  for (int i=0; i<contours.size(); i++)  {
+    Rect r = Imgproc.boundingRect(contours.get(i));
+    float dist = dist(r.x, r.y, r.x+r.width, r.y+r.height);
+    if(dist > largest){
+      largestRect = r;    
+      largest = dist;
+    }
+  }
+  
+  if(largestRect != null){
+    stroke(255, 0 , 0);
+    fill(128, 128, 0);
+    //rect(largestRect.x, largestRect.y, largestRect.width, largestRect.height);
+    return new PVector((largestRect.x+largestRect.width)/2, (largestRect.y+largestRect.height)/2);
+  }
+  
+  return null;
+  
 }
 
 
