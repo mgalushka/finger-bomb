@@ -45,6 +45,7 @@ Mat resulted_x;
 Mat resulted_y;
 
 PImage aimer;
+PImage mustage;
 Rect lastAim = new Rect(0, 0, 0, 0);
 
 Rect lastMiss = new Rect(0, 0, 0, 0);
@@ -146,6 +147,7 @@ void setup()
   explosion = new Animation("img/fire/explosion", 12, ".png");
   miss = new Animation("img/miss/miss", 12, ".png");
   hat = loadImage("img/hat.png");
+  mustage = loadImage("img/mustage.png");
 
   maxim = new Maxim(this);
   boom = maxim.loadFile("sounds/boom.wav");
@@ -354,15 +356,19 @@ void draw()
       if(objects.toArray() != null && objects.toArray().length > 0){
         Rect head = objects.toArray()[0];
         int headWidth = head.width - 10;
-        int imgHeight = (int) Math.floor(hat.height * ((float)headWidth/hat.width));
+        int imgHeight = (int) Math.floor(hat.height * ((float)(2*headWidth)/(3*hat.width)));
         imageMode(CORNER);    
-        image(hat, head.x, head.y-imgHeight+20, headWidth, imgHeight);
+        image(hat, head.x + head.width/6, head.y-imgHeight+20, 2*headWidth/3, imgHeight);
+        
+        imageMode(CENTER);  
+        int mustageHeight = (int) Math.floor(mustage.height * ((float)headWidth/(3*mustage.width)));
+        image(mustage, head.x + head.width/2, head.y+(2*head.height/3), headWidth/3, mustageHeight);
       }
       textSize(32);
       fill(255, 255, 255);
       text("Completed with Processing, OpenCV, Ani frameworks", 20, height-70);
       textSize(28);
-      text("https://github.com/mgalushka/finger-bomber", 20, height-30);
+      text("https://github.com/mgalushka/finger-bomb", 20, height-30);
 
     }
     
@@ -370,7 +376,8 @@ void draw()
     
     // calculate cooling frames
     if(isCooling){
-      coolingFrame = (coolingFrame + 1) % 10;
+      int COOLING_FRAMES = 5;
+      coolingFrame = (coolingFrame + 1) % COOLING_FRAMES;
       if(coolingFrame == 0){
         isCooling = false;
       }
@@ -456,6 +463,13 @@ Rect getRecognizedPosition(Mat finger){
   
   return null;
   
+}
+
+void keyPressed() {
+  if(key == 'q'){
+    cam.stop();
+    exit();
+  }
 }
 
 

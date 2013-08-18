@@ -26,6 +26,8 @@ public class Level{
   int start = 1;
   void draw(){
     if(start != 0){
+      imageMode(CORNER);   
+      image(background, 0, 0, CameraBattles.TEST ? applet.width/2 : applet.width, applet.height);
       textSize(60);
       fill(255, 0, 0);
       text("Level " + number, (CameraBattles.TEST ? applet.width/4-100 : applet.width/2), applet.height/2);
