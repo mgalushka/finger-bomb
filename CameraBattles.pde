@@ -54,6 +54,10 @@ Scalar YELLOW_HIGH = new Scalar(106, 216, 246);
 Scalar GREEN_LOW = new Scalar(17, 91, 103);
 Scalar GREEN_HIGH = new Scalar(77, 216, 246);
 
+int BLUR = 9;
+
+boolean TEST = false;
+
 int currentFrame = 0;
 
 boolean isCooling = false;
@@ -69,7 +73,8 @@ void setup()
 {
   System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
  
-  size(3 * w, h);
+  int wdth = TEST ? 3*w : w;
+  size(wdth, h);
   
   flipMap(w, h);
 
@@ -101,7 +106,6 @@ void setup()
   
   cleanupHammers();
 
-  int blur = 9;
   String [] min;
   String [] max;
   try{
@@ -122,17 +126,18 @@ void setup()
     GREEN.close();  
   } catch(IOException e) {e.printStackTrace();} 
 
-  int slidersStart = 2*width/3 + 20;
-  // RED - aim
-  h1 = new Slider("H1", 83, 0, 255, slidersStart, 10, 150, 20, HORIZONTAL);
-  s1 = new Slider("S1", 148, 0, 255, slidersStart, 30, 150, 20, HORIZONTAL);
-  v1 = new Slider("V1", 100, 0, 255, slidersStart, 50, 150, 20, HORIZONTAL);
-  
-  // GREEN - hammer
-  h2 = new Slider("H2", 106, 0, 255, slidersStart, 110, 150, 20, HORIZONTAL);
-  s2 = new Slider("S2", 216, 0, 255, slidersStart, 130, 150, 20, HORIZONTAL);
-  v2 = new Slider("V2", 246, 0, 255, slidersStart, 150, 150, 20, HORIZONTAL);
-
+  if(TEST){
+    int slidersStart = 2*width/3 + 20;
+    // RED - aim
+    h1 = new Slider("H1", 83, 0, 255, slidersStart, 10, 150, 20, HORIZONTAL);
+    s1 = new Slider("S1", 148, 0, 255, slidersStart, 30, 150, 20, HORIZONTAL);
+    v1 = new Slider("V1", 100, 0, 255, slidersStart, 50, 150, 20, HORIZONTAL);
+    
+    // GREEN - hammer
+    h2 = new Slider("H2", 106, 0, 255, slidersStart, 110, 150, 20, HORIZONTAL);
+    s2 = new Slider("S2", 216, 0, 255, slidersStart, 130, 150, 20, HORIZONTAL);
+    v2 = new Slider("V2", 246, 0, 255, slidersStart, 150, 150, 20, HORIZONTAL);
+  }
 
   aimer = loadImage("img/aim.png");
   explosion = new Animation("img/fire/explosion", 12, ".png");
@@ -212,36 +217,16 @@ void draw()
     
     // background
     fill(255, 255, 255);
-    // TEST
-    rect(0, 0, width/3, height);
-    // PROD
-    //rect(0, 0, width, height);
+    if(TEST){
+      // TEST
+      rect(0, 0, width/3, height);
+    }
+    else{
+      // PROD
+      rect(0, 0, width, height);
+    }
     
     if(!isCooling){
-      /*
-      int maxY = -1;
-      int minY = height + 1;    
-      for(int i=0; i<HAMMER_FRAMES; i++){
-        PVector h = hammers.get(i);
-        if(h != null){
-          if(h.y > maxY){
-            maxY = (int) h.y;      
-          }
-          if(h.y < minY){
-            minY = (int) h.y;      
-          }
-        }
-        if(maxY != -1 && minY != height + 1){
-          println(Math.abs(maxY-minY));
-          if(Math.abs(maxY-minY) >= 100){
-            // FIRE!!!
-            isFire = true;
-            isCooling = true; 
-            cleanupHammers();     
-          }
-        }  
-      }
-      */
       if(lastAim != null && hammer != null){
         // if we are firing
         if(dist(lastAim.x, lastAim.y, hammer.x, hammer.y) < 100){
@@ -290,29 +275,34 @@ void draw()
     // draw aim
     image(aimer, lastAim.x, lastAim.y);
     
-    // TEST
-    //rect(lastAim.x, lastAim.y, lastAim.width, lastAim.height);    
+    if(TEST){
+      // TEST
+      fill(255, 0, 0);
+      rect(lastAim.x, lastAim.y, lastAim.width, lastAim.height);
+      if(hammer != null){
+        fill(0, 0, 255);
+        rect(hammer.x, hammer.y, hammer.width, hammer.height);
+      }
+    }    
         
     // zhulik
     zhulik.draw();
     
-    imageMode(CORNER);
+    imageMode(CORNER);    
     
-    
-    // draw what actually is displayed in camera
-    // flip camera image
-    //Mat realCamFlipped = new Mat(pimg.width, pimg.height, CvType.CV_8UC4);
-    //Imgproc.remap(m, realCamFlipped, resulted_x, resulted_y, 0, 0, new Scalar(0, 0, 0));
-    
-    Mat camMat = lib.toCV(camImg);
-    Mat realCamFlipped = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
-    Imgproc.remap(camMat, realCamFlipped, resulted_x, resulted_y, 0, 0, new Scalar(0, 0, 0));
-    
-    Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
-    Imgproc.cvtColor(realCamFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
-    
-    // TEST
-    image(lib.toP5(camFinal), width/3, 0, width/3, height);
+    if(TEST){
+      // draw what actually is displayed in camera
+      // flip camera image
+      Mat camMat = lib.toCV(camImg);
+      Mat realCamFlipped = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
+      Imgproc.remap(camMat, realCamFlipped, resulted_x, resulted_y, 0, 0, new Scalar(0, 0, 0));
+      
+      Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
+      Imgproc.cvtColor(realCamFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
+      
+      // TEST
+      image(lib.toP5(camFinal), width/3, 0, width/3, height);
+    }
     
     currentFrame = (currentFrame + 1) % HAMMER_FRAMES;
     
@@ -328,54 +318,57 @@ void draw()
 
   //fill(128, 128, 0);
   
-  // TEST
-  rect(2*width/3, 0, width/2, height);
-  //rect(0, 0, width, height);
+  if(TEST){
+    // TEST
+    rect(2*width/3, 0, width/2, height);
+    //rect(0, 0, width, height);
   
-
-  noStroke();
-  fill(255, 0, 0);
-  if (mousePressed) {
-      h1.mouseDragged();
-      s1.mouseDragged();
-      v1.mouseDragged();
-      
-      h2.mouseDragged();
-      s2.mouseDragged();
-      v2.mouseDragged();
+    noStroke();
+    fill(255, 0, 0);
+    if (mousePressed) {
+        h1.mouseDragged();
+        s1.mouseDragged();
+        v1.mouseDragged();
+        
+        h2.mouseDragged();
+        s2.mouseDragged();
+        v2.mouseDragged();
+    }
+    
+    stroke(255, 0, 0);
+    h1.display();
+    s1.display();
+    v1.display();
+    
+    h2.display();
+    s2.display();
+    v2.display();
+    
+    int textStart = 2*width/3 + 180;
+    int heightShift = 10;
+    text(h1.get(), textStart, heightShift+10);
+    text(s1.get(), textStart, heightShift+30);
+    text(v1.get(), textStart, heightShift+50);
+    
+    text(h2.get(), textStart, heightShift+110);
+    text(s2.get(), textStart, heightShift+130);
+    text(v2.get(), textStart, heightShift+150);
   }
-  
-  stroke(255, 0, 0);
-  h1.display();
-  s1.display();
-  v1.display();
-  
-  h2.display();
-  s2.display();
-  v2.display();
-  
-  int textStart = 2*width/3 + 180;
-  int heightShift = 10;
-  text(h1.get(), textStart, heightShift+10);
-  text(s1.get(), textStart, heightShift+30);
-  text(v1.get(), textStart, heightShift+50);
-  
-  text(h2.get(), textStart, heightShift+110);
-  text(s2.get(), textStart, heightShift+130);
-  text(v2.get(), textStart, heightShift+150);
-
+  else{
+    //rect(0, 0, width, height);
+  }
 }
 
 void mousePressed() {
-
-  h1.mousePressed();
-  s1.mousePressed();
-  v1.mousePressed();
-  
-  h2.mousePressed();
-  s2.mousePressed();
-  v2.mousePressed();
-
+  if(TEST){
+    h1.mousePressed();
+    s1.mousePressed();
+    v1.mousePressed();
+    
+    h2.mousePressed();
+    s2.mousePressed();
+    v2.mousePressed();
+  }
 }
 
 
