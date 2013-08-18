@@ -20,7 +20,9 @@ ImageLibrary lib;
 PImage pimg;
 PImage camImg;
 Capture cam;
+
 CascadeClassifier classifier;
+PImage hat;
 
 Maxim maxim;
 AudioPlayer boom;
@@ -30,6 +32,7 @@ AudioPlayer win;
 AudioPlayer total;
 
 boolean faceRec = false;
+boolean lastSolo = false;
 ArrayList<Rect> faceRects;
 
 // screen dimentions
@@ -85,6 +88,9 @@ void setup()
   size(wdth, h);
   
   flipMap(w, h);
+  
+  classifier = new CascadeClassifier(dataPath("haarcascade_frontalface_default.xml"));
+  faceRects = new ArrayList(); 
 
   String[] cameras = Capture.list();
   int finalCamera = -1;
@@ -151,6 +157,7 @@ void setup()
   aimer = loadImage("img/aim.png");
   explosion = new Animation("img/fire/explosion", 12, ".png");
   miss = new Animation("img/miss/miss", 12, ".png");
+  hat = loadImage("img/hat.png");
 
   maxim = new Maxim(this);
   boom = maxim.loadFile("sounds/boom.wav");
@@ -236,24 +243,24 @@ void draw()
       }
     }
     
-    if(faceRec){
-      pimg = lib.toP5(flipped); 
-      image(pimg, 0, 0, width/3, height);
-    }
+    
     
     Level current = levels.get(currentLevel);
     if(current.completed()){
-      delay(1000);
-      println("win");
-      win.cue(0);
-      win.play();
-      if(currentLevel == (MAX_LEVELS-1)){
-        delay(1800);
-        println("total win");
-        total.cue(0);
-        total.play(); 
+      if(!lastSolo){
+        delay(1000);
+        println("win");
+        win.cue(0);
+        win.play();
+        if(currentLevel == (MAX_LEVELS-1)){
+          delay(1800);
+          println("total win");
+          total.cue(0);
+          total.play(); 
+        }
+        lastSolo = true;
+        // start camera performance    
         faceRec = true;
-        // start camera performance                
       }
     }
     
@@ -299,6 +306,7 @@ void draw()
         fill(0, 0, 255);
         rect(hammer.x, hammer.y, hammer.width, hammer.height);
       }
+      noFill();
     }    
         
     // zhulik
@@ -312,6 +320,12 @@ void draw()
     
     imageMode(CORNER);    
     
+    // face featuring
+    if(faceRec){
+      pimg = lib.toP5(flipped); 
+      image(pimg, 0, 0, TEST ? width/3 : width, height);
+    }
+    
     if(TEST){
       // draw what actually is displayed in camera
       // flip camera image
@@ -322,8 +336,38 @@ void draw()
       Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
       Imgproc.cvtColor(realCamFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
       
-      // TEST
       image(lib.toP5(camFinal), width/3, 0, width/3, height);
+    }
+    
+    // face featuring
+    if(faceRec){
+      
+      // draw what actually is displayed in camera
+      // flip camera image
+      Mat camMat = lib.toCV(camImg);
+      Mat realCamFlipped = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
+      Imgproc.remap(camMat, realCamFlipped, resulted_x, resulted_y, 0, 0, new Scalar(0, 0, 0));
+      
+      Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
+      Imgproc.cvtColor(realCamFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
+      
+      image(lib.toP5(camFinal), 0, 0, TEST ? width/3 : width, height);
+      
+      Size minSize = new Size(150, 150);
+      Size maxSize = new Size(300, 300);
+      MatOfRect objects = new MatOfRect();
+      Mat gray = new Mat(camImg.width, camImg.height, CvType.CV_8U);
+      Imgproc.cvtColor(realCamFlipped, gray, Imgproc.COLOR_BGRA2GRAY);
+      classifier.detectMultiScale(gray, objects, 1.1, 3, Objdetect.CASCADE_DO_CANNY_PRUNING | Objdetect.CASCADE_DO_ROUGH_SEARCH, minSize, maxSize);
+
+      if(objects.toArray() != null && objects.toArray().length > 0){
+        Rect head = objects.toArray()[0];
+        int headWidth = head.width - 10;
+        int imgHeight = (int) Math.floor(hat.height * ((float)headWidth/hat.width));
+        imageMode(CORNER);    
+        image(hat, head.x, head.y-imgHeight+20, headWidth, imgHeight);
+      }
+
     }
     
     currentFrame = (currentFrame + 1) % HAMMER_FRAMES;
@@ -338,12 +382,9 @@ void draw()
  
   }
 
-  //fill(128, 128, 0);
   
   if(TEST){
-    // TEST
-    rect(2*width/3, 0, width/2, height);
-    //rect(0, 0, width, height);
+    rect(2*width/3, 0, 2*width/3, height);
   
     noStroke();
     fill(255, 0, 0);
@@ -375,9 +416,6 @@ void draw()
     text(h2.get(), textStart, heightShift+110);
     text(s2.get(), textStart, heightShift+130);
     text(v2.get(), textStart, heightShift+150);
-  }
-  else{
-    //rect(0, 0, width, height);
   }
 }
 

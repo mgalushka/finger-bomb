@@ -4,6 +4,8 @@ public class Level{
   PImage background;
   List<Enemy> enemies = new ArrayList<Enemy>();
   PApplet applet;
+  
+  boolean isCompleted = false;
 
   Level(PApplet a, int n, String bg) {
     applet = a;
@@ -22,10 +24,13 @@ public class Level{
   }
 
   void draw(){
-    image(background, applet.width/2, applet.height/2, applet.width, applet.height);
-    //println("Level dimentions: " + applet.width + ", " + applet.height);
-    for(int i=0; i<enemies.size(); i++){
-      enemies.get(i).draw();
+    if(!isCompleted){
+      imageMode(CORNER);   
+      image(background, 0, 0, applet.width, applet.height);
+      imageMode(CENTER);   
+      for(int i=0; i<enemies.size(); i++){
+        enemies.get(i).draw();
+      }
     }
   }
   
@@ -51,6 +56,7 @@ public class Level{
         return false;
       }
     }
+    isCompleted = true;
     return true;
   } 
   
