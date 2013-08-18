@@ -47,8 +47,9 @@ Mat resulted_y;
 PImage aimer;
 Rect lastAim = new Rect(0, 0, 0, 0);
 
+Rect lastMiss = new Rect(0, 0, 0, 0);
+
 int HAMMER_FRAMES = 5;
-List<Rect> hammers = new ArrayList<Rect>(HAMMER_FRAMES);
  
 
 BufferedReader YELLOW, GREEN;
@@ -61,7 +62,7 @@ Scalar GREEN_HIGH = new Scalar(77, 216, 246);
 
 int BLUR = 9;
 
-boolean TEST = true;
+static boolean TEST = true;
 
 int currentFrame = 0;
 
@@ -84,8 +85,10 @@ void setup()
   w = TEST ? 640 : 640;
   h = TEST ? 480 : 480;
  
-  int wdth = TEST ? 3*w : w;
+  int wdth = TEST ? 2*w : w;
   size(wdth, h);
+  
+  lastAim = new Rect(TEST ? width/4 : width/2, height-100, 0, 0);
   
   flipMap(w, h);
   
@@ -117,8 +120,6 @@ void setup()
   frameRate(30);
   
   lib = new ImageLibrary(this);
-  
-  cleanupHammers();
 
   // load color boundaries to recognize movings
   String [] min;
@@ -140,20 +141,7 @@ void setup()
     GREEN_HIGH = new Scalar(Integer.parseInt(max[0]), Integer.parseInt(max[1]), Integer.parseInt(max[2]));  
     GREEN.close();  
   } catch(IOException e) {e.printStackTrace();} 
-
-  if(TEST){
-    int slidersStart = 2*width/3 + 20;
-    // RED - aim
-    h1 = new Slider("H1", 83, 0, 255, slidersStart, 10, 150, 20, HORIZONTAL);
-    s1 = new Slider("S1", 148, 0, 255, slidersStart, 30, 150, 20, HORIZONTAL);
-    v1 = new Slider("V1", 100, 0, 255, slidersStart, 50, 150, 20, HORIZONTAL);
-    
-    // GREEN - hammer
-    h2 = new Slider("H2", 106, 0, 255, slidersStart, 110, 150, 20, HORIZONTAL);
-    s2 = new Slider("S2", 216, 0, 255, slidersStart, 130, 150, 20, HORIZONTAL);
-    v2 = new Slider("V2", 246, 0, 255, slidersStart, 150, 150, 20, HORIZONTAL);
-  }
-
+  
   aimer = loadImage("img/aim.png");
   explosion = new Animation("img/fire/explosion", 12, ".png");
   miss = new Animation("img/miss/miss", 12, ".png");
@@ -231,7 +219,7 @@ void draw()
     
     // background - white
     fill(255, 255, 255);
-    rect(0, 0, TEST ? width/3 : width, height);
+    rect(0, 0, TEST ? width/2 : width, height);
     
     if(!isCooling){
       if(lastAim != null && hammer != null){
@@ -242,8 +230,6 @@ void draw()
         }
       }
     }
-    
-    
     
     Level current = levels.get(currentLevel);
     if(current.completed()){
@@ -257,10 +243,13 @@ void draw()
           println("total win");
           total.cue(0);
           total.play(); 
+          // start camera performance    
+          faceRec = true;
+          lastSolo = true;
+        } 
+        else{       
+          currentLevel ++;
         }
-        lastSolo = true;
-        // start camera performance    
-        faceRec = true;
       }
     }
     
@@ -269,6 +258,7 @@ void draw()
       fireFrame = (fireFrame + 1) % 12;
       println("Fire frame: " + fireFrame);
       if(fireFrame == 1){
+        lastMiss = lastAim;
         println("boom");
         boom.cue(0);
         boom.play();
@@ -288,6 +278,7 @@ void draw()
           }
         }
         else{
+          miss.display(lastMiss.x, lastMiss.y);
           // on 7 frame - miss sound 
           if(fireFrame == 7){   
             println("puk");
@@ -323,7 +314,7 @@ void draw()
     // face featuring
     if(faceRec){
       pimg = lib.toP5(flipped); 
-      image(pimg, 0, 0, TEST ? width/3 : width, height);
+      image(pimg, 0, 0, TEST ? width/2 : width, height);
     }
     
     if(TEST){
@@ -336,7 +327,7 @@ void draw()
       Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
       Imgproc.cvtColor(realCamFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
       
-      image(lib.toP5(camFinal), width/3, 0, width/3, height);
+      image(lib.toP5(camFinal), width/2, 0, width/2, height);
     }
     
     // face featuring
@@ -351,7 +342,7 @@ void draw()
       Mat camFinal = new Mat(camImg.width, camImg.height, CvType.CV_8UC4);
       Imgproc.cvtColor(realCamFlipped, camFinal, Imgproc.COLOR_BGR2RGB, 0);
       
-      image(lib.toP5(camFinal), 0, 0, TEST ? width/3 : width, height);
+      image(lib.toP5(camFinal), 0, 0, TEST ? width/2 : width, height);
       
       Size minSize = new Size(150, 150);
       Size maxSize = new Size(300, 300);
@@ -367,6 +358,11 @@ void draw()
         imageMode(CORNER);    
         image(hat, head.x, head.y-imgHeight+20, headWidth, imgHeight);
       }
+      textSize(32);
+      fill(255, 255, 255);
+      text("Completed with Processing, OpenCV, Ani frameworks", 20, height-70);
+      textSize(28);
+      text("https://github.com/mgalushka/finger-bomber", 20, height-30);
 
     }
     
@@ -378,72 +374,49 @@ void draw()
       if(coolingFrame == 0){
         isCooling = false;
       }
-    }
- 
+    } 
   }
-
   
-  if(TEST){
-    rect(2*width/3, 0, 2*width/3, height);
   
-    noStroke();
-    fill(255, 0, 0);
-    if (mousePressed) {
-        h1.mouseDragged();
-        s1.mouseDragged();
-        v1.mouseDragged();
-        
-        h2.mouseDragged();
-        s2.mouseDragged();
-        v2.mouseDragged();
-    }
-    
-    stroke(255, 0, 0);
-    h1.display();
-    s1.display();
-    v1.display();
-    
-    h2.display();
-    s2.display();
-    v2.display();
-    
-    int textStart = 2*width/3 + 180;
-    int heightShift = 10;
-    text(h1.get(), textStart, heightShift+10);
-    text(s1.get(), textStart, heightShift+30);
-    text(v1.get(), textStart, heightShift+50);
-    
-    text(h2.get(), textStart, heightShift+110);
-    text(s2.get(), textStart, heightShift+130);
-    text(v2.get(), textStart, heightShift+150);
-  }
 }
 
 // TODO: generates all the levels - to move to configuration file
 // for demo - this will be just code here
 List<Level> generateLevels(PApplet applet){
   List<Level> levels = new ArrayList<Level>();
+  
+  // ===== 0 =======
   Level l0 = new Level(applet, 1, "img/levels/bg0.png");
   Enemy sq = new Enemy(applet, "img/zhulik.png", new Square());
   sq.update();
   l0.add(sq);
   
+  // ===== 1 =======
+  Level l1 = new Level(applet, 2, "img/levels/bg1.png");
+  Enemy en2 = new Enemy(applet, "img/zhulik.png", new LeftRight(false));
+  en2.update();
+  Enemy en3 = new Enemy(applet, "img/zhulik.png", new TopBottom(true));
+  en3.update();
+  l1.add(en2);
+  l1.add(en3);
+  
+  // ===== 2 =======
+  Level l3 = new Level(applet, 2, "img/levels/bg2.png");
+  Enemy en4 = new Enemy(applet, "img/zhulik.png", new RandomMover());
+  en4.update();
+  Enemy en5 = new Enemy(applet, "img/zhulik.png", new Square());
+  en5.update();
+  Enemy en6 = new Enemy(applet, "img/zhulik.png", new LeftRight(false));
+  en6.update();
+  l3.add(en4);
+  l3.add(en5);
+  l3.add(en6);
+  
   levels.add(l0);
+  levels.add(l1);
+  levels.add(l3);
   return levels;
 }
-
-void mousePressed() {
-  if(TEST){
-    h1.mousePressed();
-    s1.mousePressed();
-    v1.mousePressed();
-    
-    h2.mousePressed();
-    s2.mousePressed();
-    v2.mousePressed();
-  }
-}
-
 
 void flipMap(int w, int h)
 {   
@@ -485,14 +458,6 @@ Rect getRecognizedPosition(Mat finger){
   
 }
 
-void cleanupHammers(){
-  
-  // just fill the array list
-  for(int j=0; j<HAMMER_FRAMES; j++){
-    hammers.add(new Rect(0, 0, 0, 0));
-  }
-  
-}
 
 
 

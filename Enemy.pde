@@ -27,6 +27,7 @@ class Enemy {
 
   void init() {
     PVector initial = movings.initial();
+    rotation = movings.rotation();
     x = initial.x;
     y = initial.y;
     println("Enemy initiated: (" + x + ", " + y + ")");
