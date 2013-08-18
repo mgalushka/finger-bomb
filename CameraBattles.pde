@@ -27,7 +27,9 @@ AudioPlayer boom;
 AudioPlayer puk;
 AudioPlayer explosionSound;
 AudioPlayer win;
+AudioPlayer total;
 
+boolean faceRec = false;
 ArrayList<Rect> faceRects;
 
 // screen dimentions
@@ -56,7 +58,7 @@ Scalar GREEN_HIGH = new Scalar(77, 216, 246);
 
 int BLUR = 9;
 
-boolean TEST = false;
+boolean TEST = true;
 
 int currentFrame = 0;
 
@@ -67,11 +69,17 @@ boolean isFire = false;
 int fireFrame = 0;
 
 Animation explosion;
-Zhulik zhulik;
+Animation miss;
+
+List<Level> levels;
+int currentLevel = 0;
+int MAX_LEVELS = 0;
 
 void setup()
 {
   System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+  w = TEST ? 640 : 640;
+  h = TEST ? 480 : 480;
  
   int wdth = TEST ? 3*w : w;
   size(wdth, h);
@@ -82,7 +90,7 @@ void setup()
   int finalCamera = -1;
   for(int i=0; i<1000; i++){
     cameras = Capture.list();
-    println("Attempt #" + i + ":" + cameras);
+    println("Attempt #" + i + ":" + Arrays.toString(cameras));
     for(int c=0; c<cameras.length; c++){
       if(cameras[c].contains("size=640x480,fps=30")){
         finalCamera = c;
@@ -97,7 +105,7 @@ void setup()
     throw new RuntimeException("Cannot start camera!");
   }
   
-  cam = new Capture(this, cameras[finalCamera]/*w, h*/); //  cameras[0],
+  cam = new Capture(this, cameras[finalCamera]); 
   cam.start();
   
   frameRate(30);
@@ -106,6 +114,7 @@ void setup()
   
   cleanupHammers();
 
+  // load color boundaries to recognize movings
   String [] min;
   String [] max;
   try{
@@ -141,6 +150,7 @@ void setup()
 
   aimer = loadImage("img/aim.png");
   explosion = new Animation("img/fire/explosion", 12, ".png");
+  miss = new Animation("img/miss/miss", 12, ".png");
 
   maxim = new Maxim(this);
   boom = maxim.loadFile("sounds/boom.wav");
@@ -154,11 +164,15 @@ void setup()
   
   win = maxim.loadFile("sounds/win.wav");
   win.setLooping(false);
+  
+  total = maxim.loadFile("sounds/total-win.wav");
+  total.setLooping(false);
 
-  // zhulik Ani animation
+  // enemies Ani animation
   Ani.init(this);
-  zhulik = new Zhulik(this);
-  zhulik.update();
+  levels = generateLevels(this);
+  currentLevel = 0;
+  MAX_LEVELS = levels.size();
   
   stroke(255);
   noFill();
@@ -185,14 +199,15 @@ void draw()
     
     // apply gaussian blur
     Mat blured = new Mat(pimg.width, pimg.height, CvType.CV_8UC4);
-    Imgproc.GaussianBlur(flipped, blured, new Size(3, 3), 3, 3);
+    Imgproc.GaussianBlur(flipped, blured, new Size(11, 11), 11, 11);
     
-    Mat aimInterimFiltered = new Mat(pimg.width, pimg.height, CvType.CV_8UC3);    
+    // recognize
+    Mat aimInterimFiltered = new Mat(pimg.width, pimg.height, CvType.CV_8UC4);    
     Core.inRange(blured, YELLOW_LOW, YELLOW_HIGH, aimInterimFiltered);
     
     // visual debug     
-    Mat aimRgbForDetection = new Mat(pimg.width, pimg.height, CvType.CV_8UC1);   
-    Imgproc.cvtColor(aimInterimFiltered, aimRgbForDetection, Imgproc.COLOR_GRAY2BGR, 0); 
+    //Mat aimRgbForDetection = new Mat(pimg.width, pimg.height, CvType.CV_8UC1);   
+    //Imgproc.cvtColor(aimInterimFiltered, aimRgbForDetection, Imgproc.COLOR_GRAY2BGR, 0); 
     
     // aim
     Rect aim = getRecognizedPosition(aimInterimFiltered);
@@ -200,31 +215,16 @@ void draw()
       lastAim = aim;
     }
     
-    
-    Mat hammerInterimFiltered = new Mat(pimg.width, pimg.height, CvType.CV_8UC3);    
-    Core.inRange(flipped, GREEN_LOW, GREEN_HIGH, hammerInterimFiltered);  
-    
-    // visual debug - display hammer
-    //Mat hammerRgbForDetection = new Mat(pimg.width, pimg.height, CvType.CV_8UC1);   
-    //Imgproc.cvtColor(hammerInterimFiltered, hammerRgbForDetection, Imgproc.COLOR_GRAY2BGR, 0);     
-    
     // hammer
+    Mat hammerInterimFiltered = new Mat(pimg.width, pimg.height, CvType.CV_8UC4);    
+    Core.inRange(blured, GREEN_LOW, GREEN_HIGH, hammerInterimFiltered);  
+
+    // can be null 
     Rect hammer = getRecognizedPosition(hammerInterimFiltered);
-    //if (hammer != null){
-      //hammers.add(currentFrame, hammer);
-      //println("Hammer: x=" + hammer.x + ", y=" + hammer.y);
-    //}
     
-    // background
+    // background - white
     fill(255, 255, 255);
-    if(TEST){
-      // TEST
-      rect(0, 0, width/3, height);
-    }
-    else{
-      // PROD
-      rect(0, 0, width, height);
-    }
+    rect(0, 0, TEST ? width/3 : width, height);
     
     if(!isCooling){
       if(lastAim != null && hammer != null){
@@ -236,13 +236,33 @@ void draw()
       }
     }
     
-    //pimg = lib.toP5(interimFiltered); 
-    //image(pimg, 0, 0, width/3, height);
+    if(faceRec){
+      pimg = lib.toP5(flipped); 
+      image(pimg, 0, 0, width/3, height);
+    }
+    
+    Level current = levels.get(currentLevel);
+    if(current.completed()){
+      delay(1000);
+      println("win");
+      win.cue(0);
+      win.play();
+      if(currentLevel == (MAX_LEVELS-1)){
+        delay(1800);
+        println("total win");
+        total.cue(0);
+        total.play(); 
+        faceRec = true;
+        // start camera performance                
+      }
+    }
     
     imageMode(CENTER);
-    if(isFire){
+    if(isFire && !faceRec){
       fireFrame = (fireFrame + 1) % 12;
+      println("Fire frame: " + fireFrame);
       if(fireFrame == 1){
+        println("boom");
         boom.cue(0);
         boom.play();
       }
@@ -250,30 +270,26 @@ void draw()
         isFire = false;
       }
       else{
-        // if we targeted to zhulik
-        if(dist(zhulik.getZhulik().x, zhulik.getZhulik().y, lastAim.x, lastAim.y) < 100){
-          explosion.display(lastAim.x, lastAim.y);  
-          zhulik.stop();
-          //if(fireFrame == 5){
-          explosionSound.cue(0);
-          explosionSound.play();
-          delay(1000);
-          win.cue(0);
-          win.play();
-          //}   
+        // if we targeted the enemy - check it with level
+        if(current.collision(lastAim)){
+          println("collision");   
+          explosion.display(lastAim.x, lastAim.y);
+          if(fireFrame == 1){     
+            println("explosion");   
+            explosionSound.cue(0);
+            explosionSound.play();                    
+          }
         }
         else{
-           //if(fireFrame == 5){
+          // on 7 frame - miss sound 
+          if(fireFrame == 7){   
+            println("puk");
             puk.cue(0);
             puk.play();
-          //}   
+          }
         }          
       }
     }
-    
-    imageMode(CENTER);
-    // draw aim
-    image(aimer, lastAim.x, lastAim.y);
     
     if(TEST){
       // TEST
@@ -286,7 +302,13 @@ void draw()
     }    
         
     // zhulik
-    zhulik.draw();
+    //zhulik.draw();
+    // enemies animation handeled here
+    levels.get(currentLevel).draw();
+    
+    imageMode(CENTER);
+    // draw aim
+    image(aimer, lastAim.x, lastAim.y);
     
     imageMode(CORNER);    
     
@@ -359,6 +381,19 @@ void draw()
   }
 }
 
+// TODO: generates all the levels - to move to configuration file
+// for demo - this will be just code here
+List<Level> generateLevels(PApplet applet){
+  List<Level> levels = new ArrayList<Level>();
+  Level l0 = new Level(applet, 1, "img/levels/bg0.png");
+  Enemy sq = new Enemy(applet, "img/zhulik.png", new Square());
+  sq.update();
+  l0.add(sq);
+  
+  levels.add(l0);
+  return levels;
+}
+
 void mousePressed() {
   if(TEST){
     h1.mousePressed();
@@ -403,8 +438,8 @@ Rect getRecognizedPosition(Mat finger){
     }
   }
   
-  // if found square is really big (50px)
-  if(largestRect != null && largest > 50){
+  // if found square is really big (25px)
+  if(largestRect != null && largest > 25){
     return new Rect(largestRect.x+largestRect.width/2, largestRect.y+largestRect.height/2, largestRect.width, largestRect.height);
   }
   

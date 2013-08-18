@@ -18,8 +18,8 @@ class Animation {
 
   void display(float xpos, float ypos) {
     frame = (frame+1) % imageCount;
-    int adjHeight = (int) Math.floor(images[frame].height * (100.0/images[frame].width));
-    image(images[frame], xpos, ypos, 100, adjHeight);
+    int adjHeight = (int) Math.floor(images[frame].height * (150.0/images[frame].width));
+    image(images[frame], xpos, ypos, 150, adjHeight);
   }
   
   int getWidth() {
