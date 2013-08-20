@@ -63,7 +63,7 @@ Scalar GREEN_HIGH = new Scalar(77, 216, 246);
 
 int BLUR = 9;
 
-static boolean TEST = true;
+static boolean TEST = false;
 
 int currentFrame = 0;
 
@@ -364,9 +364,9 @@ void draw()
         int mustageHeight = (int) Math.floor(mustage.height * ((float)headWidth/(3*mustage.width)));
         image(mustage, head.x + head.width/2, head.y+(2*head.height/3), headWidth/3, mustageHeight);
       }
-      textSize(32);
+      textSize(30);
       fill(255, 255, 255);
-      text("Completed with Processing, OpenCV, Ani frameworks", 20, height-70);
+      text("Done with Processing, OpenCV, Ani", 20, height-70);
       textSize(28);
       text("https://github.com/mgalushka/finger-bomb", 20, height-30);
 
