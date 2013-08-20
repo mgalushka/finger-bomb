@@ -5,6 +5,12 @@ Destroy enemies with your fingers and web cam.
 
 Program recognizes colored caps put on fingers and allow to play with game world without touching computer devices and operating only through web cam.
 
+View demo here:
+http://www.youtube.com/watch?v=XMqgc_Dz6_4&feature=youtu.be
+
+And video - how I'm playing it:
+http://www.youtube.com/watch?v=-jBgzILdC-g
+
 Thanks to Processing framework:
 http://processing.org
 
